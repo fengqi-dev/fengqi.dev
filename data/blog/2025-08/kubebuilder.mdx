@@ -1,0 +1,46 @@
+---
+title: kubebuilder入门
+date: '2025-08-27'
+tags: ['k8s', 'kubebuilder', 'controller', 'webhook']
+draft: false
+summary: kubebuilder入门
+---
+
+## 依赖
+
+- kind
+- kubebuilder
+
+### 安装kind
+
+```bash
+brew install kind
+```
+创建集群
+```bash
+cat <<EOF | kind create cluster --config=-
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+    - role: control-plane
+      image: docker.m.daocloud.io/kindest/node:v1.30.13@sha256:397209b3d947d154f6641f2d0ce8d473732bd91c87d9575ade99049aa33cd648
+    - role: worker
+      image: docker.m.daocloud.io/kindest/node:v1.30.13@sha256:397209b3d947d154f6641f2d0ce8d473732bd91c87d9575ade99049aa33cd648
+    - role: worker
+      image: docker.m.daocloud.io/kindest/node:v1.30.13@sha256:397209b3d947d154f6641f2d0ce8d473732bd91c87d9575ade99049aa33cd648
+EOF
+```
+**使用daocloud进行镜像加速**
+
+查看集群状态
+
+```bash
+kind get clusters
+```
+
+### 安装kubebuilder
+
+```bash
+brew install kubebuilder
+```
+
