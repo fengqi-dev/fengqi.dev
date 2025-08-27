@@ -1,0 +1,167 @@
+---
+title: kubebuilder示例运行
+date: '2025-08-28'
+tags: ['k8s', 'kubebuilder', 'controller', 'webhook']
+draft: false
+summary: kubebuilder示例运行
+---
+
+## 目标
+
+自定义一个CodeRunner来执行（shell，python）脚本
+
+## 示例
+
+```bash
+# 创建golang项目
+mkdir coderunner
+cd coderunner
+go mod init fengqi.dev/kubebuilder/coderunner
+
+# 创建一个新的kubebuilder项目
+kubebuilder init --domain fengqi.dev
+
+# 创建一个新的API
+kubebuilder create api --group kubebuilder --version v1 --kind CodeRunner
+
+# 生成CRD和RBAC文件
+make manifests
+```
+
+代码目录
+
+```text
+├── api
+│   └── v1
+│       ├── coderunner_types.go
+│       ├── groupversion_info.go
+│       └── zz_generated.deepcopy.go
+├── bin
+│   ├── controller-gen -> /Users/fengqi/code/coderunner/bin/controller-gen-v0.18.0
+│   └── controller-gen-v0.18.0
+├── cmd
+│   └── main.go
+├── config
+│   ├── crd
+│   │   ├── bases
+│   │   │   └── kubebuilder.fengqi.dev_coderunners.yaml
+│   │   ├── kustomization.yaml
+│   │   └── kustomizeconfig.yaml
+│   ├── default
+│   │   ├── cert_metrics_manager_patch.yaml
+│   │   ├── kustomization.yaml
+│   │   ├── manager_metrics_patch.yaml
+│   │   └── metrics_service.yaml
+│   ├── manager
+│   │   ├── kustomization.yaml
+│   │   └── manager.yaml
+│   ├── network-policy
+│   │   ├── allow-metrics-traffic.yaml
+│   │   └── kustomization.yaml
+│   ├── prometheus
+│   │   ├── kustomization.yaml
+│   │   ├── monitor_tls_patch.yaml
+│   │   └── monitor.yaml
+│   ├── rbac
+│   │   ├── coderunner_admin_role.yaml
+│   │   ├── coderunner_editor_role.yaml
+│   │   ├── coderunner_viewer_role.yaml
+│   │   ├── kustomization.yaml
+│   │   ├── leader_election_role_binding.yaml
+│   │   ├── leader_election_role.yaml
+│   │   ├── metrics_auth_role_binding.yaml
+│   │   ├── metrics_auth_role.yaml
+│   │   ├── metrics_reader_role.yaml
+│   │   ├── role_binding.yaml
+│   │   ├── role.yaml
+│   │   └── service_account.yaml
+│   └── samples
+│       ├── kubebuilder_v1_coderunner.yaml
+│       └── kustomization.yaml
+├── Dockerfile
+├── go.mod
+├── go.sum
+├── hack
+│   └── boilerplate.go.txt
+├── internal
+│   └── controller
+│       ├── coderunner_controller_test.go
+│       ├── coderunner_controller.go
+│       └── suite_test.go
+├── Makefile
+├── PROJECT
+├── README.md
+└── test
+    ├── e2e
+    │   ├── e2e_suite_test.go
+    │   └── e2e_test.go
+    └── utils
+        └── utils.go
+```
+
+## 部署
+
+由于kubebuilder中使用cert-manager来管理webhook的证书，所以需要先安装cert-manager
+```bash
+kubectl apply -f https://ghfast.top/https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+```
+
+Dockerfile中使用golang:1.24和gcr.io/distroless/static:nonroot，需要使用daocloud进行加速
+
+golang:1.24 => docker.m.daocloud.io/golang:1.24
+
+gcr.io/distroless/static:nonroot => gcr.m.daocloud.io/distroless/static:nonroot
+
+```bash
+# 构建镜像
+make docker-build IMG=coderunner:v1.0.0
+# 加载镜像
+kind load docker-image coderunner:v1.0.0
+# 卸载旧版本
+make undeploy
+# 部署新版本
+make deploy IMG=coderunner:v1.0.0
+```
+
+```text
+kubectl logs -f coderunner-controller-manager-77555568b9-cfv5v -n coderunner-system
+2025-08-27T16:35:37Z    INFO    setup   starting manager
+2025-08-27T16:35:37Z    INFO    controller-runtime.metrics      Starting metrics server
+2025-08-27T16:35:37Z    INFO    setup   disabling http/2
+2025-08-27T16:35:37Z    INFO    starting server {"name": "health probe", "addr": "[::]:8081"}
+I0827 16:35:37.604183       1 leaderelection.go:257] attempting to acquire leader lease coderunner-system/537debfb.fengqi.dev...
+I0827 16:35:37.662465       1 leaderelection.go:271] successfully acquired lease coderunner-system/537debfb.fengqi.dev
+2025-08-27T16:35:37Z    DEBUG   events  coderunner-controller-manager-77555568b9-cfv5v_01978ac0-363e-42df-a271-dd4655510e4e became leader    {"type": "Normal", "object": {"kind":"Lease","namespace":"coderunner-system","name":"537debfb.fengqi.dev","uid":"19abe85b-bde5-45e6-baa3-7bcdfc116e29","apiVersion":"coordination.k8s.io/v1","resourceVersion":"205276"}, "reason": "LeaderElection"}
+2025-08-27T16:35:37Z    INFO    Starting EventSource    {"controller": "coderunner", "controllerGroup": "kubebuilder.fengqi.dev", "controllerKind": "CodeRunner", "source": "kind source: *v1.CodeRunner"}
+2025-08-27T16:35:37Z    INFO    Starting Controller     {"controller": "coderunner", "controllerGroup": "kubebuilder.fengqi.dev", "controllerKind": "CodeRunner"}
+2025-08-27T16:35:37Z    INFO    Starting workers        {"controller": "coderunner", "controllerGroup": "kubebuilder.fengqi.dev", "controllerKind": "CodeRunner", "worker count": 1}
+2025-08-27T16:35:38Z    INFO    controller-runtime.metrics      Serving metrics server  {"bindAddress": ":8443", "secure": true}
+```
+
+## 创建CodeRunner CRD
+
+修改config/samples/kubebuilder_v1_coderunner.yaml文件内用，给spec添加字段
+
+```yaml
+apiVersion: kubebuilder.fengqi.dev/v1
+kind: CodeRunner
+metadata:
+  labels:
+    app.kubernetes.io/name: coderunner
+    app.kubernetes.io/managed-by: kustomize
+  name: coderunner-sample
+spec:
+  # TODO(user): Add fields here
+  foo: "bar"
+```
+```bash
+kubectl apply -f config/samples/kubebuilder_v1_coderunner.yaml
+# coderunner.kubebuilder.fengqi.dev/coderunner-sample created
+# 查看刚才创建的crd
+kubectl get coderunner -A
+# NAMESPACE   NAME                AGE
+# default     coderunner-sample   97s
+
+# 删除
+kubectl delete -f config/samples/kubebuilder_v1_coderunner.yaml
+```
