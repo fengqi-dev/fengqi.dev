@@ -1,0 +1,38 @@
+---
+title: Remote debug torch in vscode
+date: '2025-10-09'
+tags: ['python', 'debug', 'remote', 'torch', 'vscode', 'k8s']
+draft: false
+summary: Remote debug torch in vscode
+---
+
+## remote
+
+```
+git clone https://github.com/fengqi-dev/golang-remote-debug-code.git
+cd golang-remote-debug-code
+bash run-debug-server.sh
+```
+
+You will got like this
+
+![alt text](/static/images/2025-09/config.png)
+
+## local
+
+```
+git clone https://github.com/fengqi-dev/golang-remote-debug-code.git
+cd golang-remote-debug-code
+```
+
+Add `remote` gen to .vscode/launch.json
+
+![alt text](/static/images/2025-09/launch.png)
+
+Add some breakpoint
+
+![alt text](/static/images/2025-09/debug-1.png)
+
+Press F5 to debug
+
+![alt text](/static/images/2025-09/debug-2.png)
